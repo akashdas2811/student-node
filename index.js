@@ -6,6 +6,8 @@ import jwt from "jsonwebtoken"
 import mongoose from "mongoose"
 import { userSchema } from "./model/user.Schema.js"
 import { LocalStorage } from "node-localstorage"
+import  bcrypt from "bcrypt"
+import { exit } from "process"
 dotenv.config()
 
 mongoose.set('strictQuery',false);
@@ -85,7 +87,9 @@ app.post('/login', (req,res)=>{
             console.log(EL);
             if(EL.EmailID==un)
             {
-                if(EL.password==pass)
+                const info = await bcrypt.compare(pass,EL.password);
+                console.log(info)
+                if(info)
                 {
                     let key = process.env.JWT_SECRET_KEY;
                     let data = {
@@ -119,16 +123,28 @@ app.post('/registration', (req,res)=>{
     userModel.findOne({EmailID:req.body.EmailID}).then(async(val)=>{
         if(val==null)
         {
-            const user = new userModel(req.body);
+            let value = req.body;
+            const hashpwd = async (password,saltRounds = 10) =>{
+                try {
+                    const salt = await bcrypt.genSalt(saltRounds)
+                    return await bcrypt.hash(password,salt)
+                } catch (error) {
+                    console.log(error)
+                    return password
+                }
+                return null
+            };
+            value.password = await hashpwd(req.body.password);
+            const user = new userModel(value);
             await user.save()
             console.log(user)
+            res.redirect('/login')
         }
         else
         {
             console.log("User alredy present");
         }
     })
-    res.send()
     
 })
 app.listen(3026,()=>{
