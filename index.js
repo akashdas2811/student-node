@@ -7,6 +7,7 @@ import mongoose from "mongoose"
 import { userSchema } from "./model/user.Schema.js"
 import { LocalStorage } from "node-localstorage"
 import  bcrypt from "bcrypt"
+import nodemailer from "nodemailer"
 import { exit } from "process"
 dotenv.config()
 
@@ -147,6 +148,26 @@ app.post('/registration', (req,res)=>{
     })
     
 })
+app.get('/sendmail',async(req,res)=>{
+    
+    let transport = nodemailer.createTransport({
+        host:"smtp.gmail.com",
+        port: 587,
+        secure: false,
+        auth:{
+            user: "nodejstest268@gmail.com",
+            pass: "somxteygbgawccno"
+        }
+    })
+    let sendmail = await transport.sendMail({
+        from:"nodejstest268@gmail.com",
+        to:"subhankar0810@gmail.com",
+        subject: "This is a test message from me",
+        text:"This a testing message",
+        html:"<h1>This is heading</h1>",
+    })
+    console.log(sendmail.messageId);
+});
 app.listen(3026,()=>{
     console.log("server start in http://localhost:3026");
 })
