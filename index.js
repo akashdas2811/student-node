@@ -30,7 +30,7 @@ app.use(bodyParser.json())
 app.use(
     session({
         secret: 'keyboard cat',
-        resave: true,
+        resave: false,
         saveUninitialized: true,
         cookie: { secure: true },
     })
@@ -74,8 +74,10 @@ app.get('/logout', (req, res) => {
     res.redirect('/login')
 })
 app.get('/login', (req, res) => {
-    console.log(req.session.message)
-    res.render('login')
+    let message = localStorage.getItem('message')
+    console.log(message)
+    res.render('login', { message: message })
+    localStorage.removeItem('message')
 })
 app.get('/resgistation', (req, res) => {
     res.render('ragistration')
@@ -132,10 +134,33 @@ app.post('/registration', (req, res) => {
             }
             value.password = await hashpwd(req.body.password)
             const user = new userModel(value)
+            let transport = nodemailer.createTransport({
+                host: 'smtp.gmail.com',
+                port: 587,
+                secure: false,
+                auth: {
+                    user: 'nodejstest268@gmail.com',
+                    pass: 'somxteygbgawccno',
+                },
+            })
+            let sendmail = await transport.sendMail({
+                from: 'nodejstest268@gmail.com',
+                to: user.EmailID,
+                subject: 'This is a verification mail',
+                text: 'This is a verification mail',
+                html:
+                    '<h1>Hello </h1>' +
+                    user.Firstname +
+                    '<br> Pls confirm your account verification click the below link',
+            })
+            console.log(sendmail.messageId)
             await user.save()
             console.log(user)
-            req.session.message =
+            localStorage.setItem(
+                'message',
                 'To activate your account verify your email address'
+            )
+            // req.session.message =
 
             res.redirect('/login')
         } else {
@@ -143,18 +168,23 @@ app.post('/registration', (req, res) => {
         }
     })
 })
-app.get('/temp', (req, res) => {
-    req.session.name = 'Hello'
-    req.session.save((err) => {
-        console.log('Error')
-        console.log(err)
-    })
-    res.send('done')
-})
-app.get('/temp2', (req, res) => {
-    console.log(req.session.name)
-    res.send(req.session.name)
-})
+// app.get('/temp', (req, res) => {
+//     req.session.regenerate((err) => {
+//         if (err) {
+//             next(err)
+//         }
+//         req.session.name = 'Hello'
+//         req.session.save((err) => {
+//             console.log('Error')
+//             console.log(err)
+//         })
+//         res.send('done')
+//     })
+// })
+// app.get('/temp2', (req, res) => {
+//     console.log(req.session.name)
+//     res.send(req.session.name)
+// })
 app.get('/sendmail', async (req, res) => {
     let transport = nodemailer.createTransport({
         host: 'smtp.gmail.com',
