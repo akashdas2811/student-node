@@ -9,5 +9,6 @@ export const userSchema = new mongoose.Schema({
     Pincode: { type: Number },
     EmailID: { type: String },
     password: { type: String },
+    status: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date() },
 })

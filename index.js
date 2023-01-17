@@ -93,27 +93,35 @@ app.post('/login', (req, res) => {
             console.log(EL)
             if (EL.EmailID == un) {
                 const info = await bcrypt.compare(pass, EL.password)
-                console.log(info)
                 if (info) {
-                    let key = process.env.JWT_SECRET_KEY
-                    let data = {
-                        id: EL._id,
-                        time: new Date().getTime(),
+                    if (EL.status) {
+                        let key = process.env.JWT_SECRET_KEY
+                        let data = {
+                            id: EL._id,
+                            time: new Date().getTime(),
+                        }
+                        let signopt = {
+                            expiresIn: '10d',
+                        }
+                        const token = jwt.sign(data, key, signopt)
+                        localStorage.setItem('token', token)
+                        console.log(
+                            'your name is verified and token is ' + token
+                        )
+                        res.redirect('/')
+                    } else {
+                        localStorage.setItem('message', 'User is not verified')
+                        res.redirect('/login')
                     }
-                    let signopt = {
-                        expiresIn: '10d',
-                    }
-                    const token = jwt.sign(data, key, signopt)
-                    localStorage.setItem('token', token)
-                    console.log('your name is verified and token is ' + token)
-                    res.redirect('/')
                 } else {
                     console.log('password wrong')
-                    res.send('password wrong')
+                    localStorage.setItem('message', 'password wrong')
+                    res.redirect('/login')
                 }
             } else {
                 console.log('user not present')
-                res.send('user not present')
+                localStorage.setItem('message', 'user not present')
+                res.redirect('/login')
             }
         }
     })
@@ -134,6 +142,15 @@ app.post('/registration', (req, res) => {
             }
             value.password = await hashpwd(req.body.password)
             const user = new userModel(value)
+            //create jwt for email validation
+            const payload = {
+                userId: user._id,
+                time: new Date().getTime(),
+            }
+            let signopt = {
+                expiresIn: '10m',
+            }
+            const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, signopt)
             let transport = nodemailer.createTransport({
                 host: 'smtp.gmail.com',
                 port: 587,
@@ -151,7 +168,7 @@ app.post('/registration', (req, res) => {
                 html:
                     '<h1>Hello </h1>' +
                     user.Firstname +
-                    '<br> Pls confirm your account verification click the below link',
+                    `<br> Pls confirm your account verification click the below link <br> <a href="${process.env.SITE_URL}/activate-my-account/${token}">click here</a>`,
             })
             console.log(sendmail.messageId)
             await user.save()
@@ -168,41 +185,27 @@ app.post('/registration', (req, res) => {
         }
     })
 })
-// app.get('/temp', (req, res) => {
-//     req.session.regenerate((err) => {
-//         if (err) {
-//             next(err)
-//         }
-//         req.session.name = 'Hello'
-//         req.session.save((err) => {
-//             console.log('Error')
-//             console.log(err)
-//         })
-//         res.send('done')
-//     })
-// })
-// app.get('/temp2', (req, res) => {
-//     console.log(req.session.name)
-//     res.send(req.session.name)
-// })
-app.get('/sendmail', async (req, res) => {
-    let transport = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false,
-        auth: {
-            user: 'nodejstest268@gmail.com',
-            pass: 'somxteygbgawccno',
-        },
-    })
-    let sendmail = await transport.sendMail({
-        from: 'nodejstest268@gmail.com',
-        to: 'subhankar0810@gmail.com',
-        subject: 'This is a test message from me',
-        text: 'This a testing message',
-        html: '<h1>This is heading</h1>',
-    })
-    console.log(sendmail.messageId)
+app.get('/activate-my-account/:id', (req, res) => {
+    let id = jwt.verify(req.params.id, process.env.JWT_SECRET_KEY).userId
+    const userModel = mongoose.model('user', userSchema)
+    userModel
+        .findByIdAndUpdate(id, { status: true })
+        .then((result) => {
+            console.log(result)
+            if (result.status) {
+                localStorage.setItem('message', 'User is verified')
+            } else {
+                localStorage.setItem('message', 'User is not verified')
+            }
+            res.redirect('/login')
+        })
+        .catch((reason) => {
+            localStorage.setItem(
+                'message',
+                'User is not verified reason: ' + String(reason)
+            )
+            res.redirect('/login')
+        })
 })
 app.listen(3026, () => {
     console.log('server start in http://localhost:3026')
